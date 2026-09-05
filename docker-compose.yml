@@ -1,0 +1,83 @@
+version: "3.8"
+
+x-worker-common: &worker-common
+  build: .
+  depends_on:
+    - dask-scheduler
+  networks:
+    - dask-cluster-net
+  volumes:
+    - ./shared-data:/app/shared-data
+  environment:
+    - DASK_SCHEDULER_ADDRESS=tcp://dask-scheduler:8786
+
+services:
+  dask-scheduler:
+    build: .
+    hostname: dask-scheduler
+    command: ["dask", "scheduler", "--host", "0.0.0.0", "--port", "8786", "--dashboard-address", ":8787"]
+    ports:
+      - "8786:8786"   # Canal IPC (comunicación con clientes/workers)
+      - "8787:8787"   # Dask Dashboard
+    networks:
+      - dask-cluster-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  dask-worker-1:
+    <<: *worker-common
+    hostname: dask-worker-1
+    command: ["dask", "worker", "tcp://dask-scheduler:8786", "--nthreads", "2", "--memory-limit", "1.5GB", "--name", "worker-1"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1.5g
+
+  dask-worker-2:
+    <<: *worker-common
+    hostname: dask-worker-2
+    command: ["dask", "worker", "tcp://dask-scheduler:8786", "--nthreads", "2", "--memory-limit", "1.5GB", "--name", "worker-2"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1.5g
+
+  dask-worker-3:
+    <<: *worker-common
+    hostname: dask-worker-3
+    command: ["dask", "worker", "tcp://dask-scheduler:8786", "--nthreads", "2", "--memory-limit", "1.5GB", "--name", "worker-3"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1.5g
+
+  # Contenedor "cliente": aquí corres el generador, el pipeline Dask y el flow de Prefect
+  client:
+    build: .
+    hostname: client
+    depends_on:
+      - dask-scheduler
+      - dask-worker-1
+      - dask-worker-2
+      - dask-worker-3
+    networks:
+      - dask-cluster-net
+    ports:
+      - "4200:4200"   # Prefect Server UI / API
+    volumes:
+      - ./shared-data:/app/shared-data
+    environment:
+      - DASK_SCHEDULER_ADDRESS=tcp://dask-scheduler:8786
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_URL=http://127.0.0.1:4200/api
+    command: ["tail", "-f", "/dev/null"]   # mantiene el contenedor vivo para ejecutar comandos con docker exec
+
+networks:
+  dask-cluster-net:
+    driver: bridge
