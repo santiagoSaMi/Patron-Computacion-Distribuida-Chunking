@@ -1,7 +1,7 @@
 # Guía de Laboratorio Avanzado: Computación Distribuida con Dask, Docker & Prefect
 
 **Curso:** Arquitectura de Software Avanzada — Módulo de Patrones Arquitectónicos Avanzados / Sistemas Distribuidos y Big Data
-**Autor:** Santiago
+**Autor:** Santiago Sabogal Millan
 **Institución:** Universidad de La Sabana
 
 ---
